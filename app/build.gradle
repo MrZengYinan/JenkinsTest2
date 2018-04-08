@@ -1,20 +1,101 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 27
+    compileSdkVersion Integer.parseInt(project.ANDROID_COMPILE_SDK_VERSION)
     defaultConfig {
-        applicationId "com.zyn.jenkinstest2"
-        minSdkVersion 22
-        targetSdkVersion 27
-        versionCode 1
-        versionName "1.0"
+        applicationId project.APPLICATION_ID
+        minSdkVersion Integer.parseInt(project.ANDROID_MIN_SDK_VERSION)
+        targetSdkVersion Integer.parseInt(project.ANDROID_TARGET_SDK_VERSION)
+        versionCode Integer.parseInt(project.APP_VERSION_CODE)
+        versionName project.APP_VERSION_NAME
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
+
+    signingConfigs {
+
+        //加载资源
+        Properties properties = new Properties()
+        InputStream inputStream = project.rootProject.file('local.properties').newDataInputStream()
+        properties.load(inputStream)
+
+        debug {
+            keyAlias properties.getProperty("debug_keyAlias")
+            keyPassword properties.getProperty("debug_keyPassword")
+            storeFile file(properties.getProperty("debug_storeFile"))
+            storePassword properties.getProperty("debug_storePassword")
+        }
+        release {
+            keyAlias properties.getProperty("release_keyAlias")
+            keyPassword properties.getProperty("release_keyPassword")
+            storeFile file(properties.getProperty("release_storeFile"))
+            storePassword properties.getProperty("release_storePassword")
+        }
+    }
+
     buildTypes {
         release {
-            minifyEnabled false
+            shrinkResources true //移除无用的resource文件
+            minifyEnabled true //混淆
+            zipAlignEnabled true //Zipalign优化
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+            buildConfigField "boolean", "LOG_DEBUG", "false"
+            buildConfigField "String", "BASE_URL", project.RELEASE_BASE_URL
         }
+        debug {
+            shrinkResources false
+            minifyEnabled false
+            zipAlignEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
+            buildConfigField "boolean", "LOG_DEBUG", "true"
+            buildConfigField "String", "BASE_URL", project.DEBUG_BASE_URL
+        }
+    }
+
+    flavorDimensions("channel")
+    productFlavors {
+        xiaomi {
+            dimension "channel"
+        }
+        huawei {
+            dimension "channel"
+        }
+        yingyongbao {
+            dimension "channel"
+        }
+        baidu {
+            dimension "channel"
+        }
+    }
+    productFlavors.all { flavor ->
+        flavor.manifestPlaceholders = [CHANNEL_VALUE: name]
+        if(flavor.name.startsWith("xiaomi")){
+            flavor.manifestPlaceholders.put("APP_ICON", "@mipmap/xiaomi")
+        }else if(flavor.name.startsWith("huawei")){
+            flavor.manifestPlaceholders.put("APP_ICON", "@mipmap/huawei")
+        }else{
+            flavor.manifestPlaceholders.put("APP_ICON", "@mipmap/ic_launcher")
+        }
+    }
+
+    applicationVariants.all {variant ->
+        variant.outputs.all {
+            outputFileName = "JenkinsTest2-"+variant.flavorName+"-v"+variant.versionName+"_"+variant.buildType.name+".apk"
+        }
+    }
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES.txt'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/dependencies.txt'
+        exclude 'META-INF/LGPL2.1'
     }
 }
 
